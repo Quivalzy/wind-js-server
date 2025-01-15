@@ -8,7 +8,7 @@ var cors = require('cors');
 
 var app = express();
 var port = process.env.PORT || 7000;
-var baseDir ='http://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_1p00.pl';
+var baseDir ='https://nomads.ncep.noaa.gov/cgi-bin/filter_gfs_1p00.pl';
 
 // cors config
 var whitelist = [
@@ -46,14 +46,14 @@ app.get('/latest', cors(corsOptions), function(req, res){
 	 */
 	function sendLatest(targetMoment){
 
-		var stamp = moment(targetMoment).format('YYYYMMDD') + roundHours(moment(targetMoment).hour(), 6);
+		var stamp = moment(targetMoment).format('YYYYMMDD');
 		var fileName = __dirname +"/json-data/"+ stamp +".json";
 
 		res.setHeader('Content-Type', 'application/json');
 		res.sendFile(fileName, {}, function (err) {
 			if (err) {
 				console.log(stamp +' doesnt exist yet, trying previous interval..');
-				sendLatest(moment(targetMoment).subtract(6, 'hours'));
+				sendLatest(moment(targetMoment).subtract(1, 'days'));
 			}
 		});
 	}
@@ -150,11 +150,11 @@ function getGribData(targetMoment){
             return;
         }
 
-		var stamp = moment(targetMoment).format('YYYYMMDD') + roundHours(moment(targetMoment).hour(), 6);
+		var stamp = moment(targetMoment).format('YYYYMMDD');
 		request.get({
 			url: baseDir,
 			qs: {
-				file: 'gfs.t'+ roundHours(moment(targetMoment).hour(), 6) +'z.pgrb2.1p00.f000',
+				file: 'gfs.t00z.pgrb2.1p00.f000',
 				lev_10_m_above_ground: 'on',
 				lev_surface: 'on',
 				var_TMP: 'on',
@@ -164,7 +164,7 @@ function getGribData(targetMoment){
 				rightlon: 360,
 				toplat: 90,
 				bottomlat: -90,
-				dir: '/gfs.'+stamp
+				dir: '/gfs.'+stamp+'/00/atmos'
 			}
 
 		}).on('error', function(err){
@@ -217,7 +217,7 @@ function convertGribToJson(stamp, targetMoment){
 
 	var exec = require('child_process').exec, child;
 
-	child = exec('converter/bin/grib2json --data --output json-data/'+stamp+'.json --names --compact grib-data/'+stamp+'.f000',
+	child = exec('java -jar converter/lib/grib2json-0.8.0-SNAPSHOT.jar --data --output json-data/20250115.json --names --compact grib-data/20250115.f000',
 		{maxBuffer: 500*1024},
 		function (error, stdout, stderr){
 
@@ -232,8 +232,8 @@ function convertGribToJson(stamp, targetMoment){
 				exec('rm grib-data/*');
 
 				// if we don't have older stamp, try and harvest one
-				var prevMoment = moment(targetMoment).subtract(6, 'hours');
-				var prevStamp = prevMoment.format('YYYYMMDD') + roundHours(prevMoment.hour(), 6);
+				var prevMoment = moment(targetMoment).subtract(1, 'days');
+				var prevStamp = prevMoment.format('YYYYMMDD');
 
 				if(!checkPath('json-data/'+ prevStamp +'.json', false)){
 
