@@ -15,9 +15,18 @@ var whitelist = [
 	'http://localhost:63342',
 	'http://localhost:3000',
 	'http://localhost:4000',
+	'http://localhost:8001',
+	'http://192.168.1.47:8001',
+	'http://192.168.1.47:3000',
+	'http://146.75.160.28',
 	'http://danwild.github.io'
 ];
-
+function addToWhitelist(ip) {
+    if (!whitelist.includes(ip)) {
+        whitelist.push(ip);
+        console.log(`Added ${ip} to whitelist.`);
+    }
+}
 var corsOptions = {
 	origin: function(origin, callback){
 		var originIsWhitelisted = whitelist.indexOf(origin) !== -1;
@@ -30,6 +39,8 @@ app.listen(port, function(err){
 });
 
 app.get('/', cors(corsOptions), function(req, res){
+	const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    addToWhitelist(clientIp);
     res.send('hello wind-js-server.. go to /latest for wind data..');
 });
 
@@ -217,7 +228,7 @@ function convertGribToJson(stamp, targetMoment){
 
 	var exec = require('child_process').exec, child;
 
-	child = exec('java -jar converter/lib/grib2json-0.8.0-SNAPSHOT.jar --data --output json-data/20250115.json --names --compact grib-data/20250115.f000',
+	child = exec('java -jar converter/lib/grib2json-0.8.0-SNAPSHOT.jar --data --output json-data/'+stamp+'.json --names --compact grib-data/'+stamp+'.f000',
 		{maxBuffer: 500*1024},
 		function (error, stdout, stderr){
 
